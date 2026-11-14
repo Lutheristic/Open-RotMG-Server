@@ -403,6 +403,9 @@ pub(super) struct Steering {
     pub clearance: f32,
 }
 
+/// Beyond the 15-tile pressed radius, so a recovering player stops backing off and can resume its plan.
+pub(super) const OUT_OF_REACH: f32 = 16.;
+
 pub(super) fn movement(
     v: &PlayerView,
     grid: &Grid,
@@ -447,7 +450,7 @@ pub(super) fn movement(
             .map(|e| point.distance(e.position))
             .fold(20., f32::min);
         let spacing = if retreat {
-            separation.min(12.) * 3.
+            separation.min(OUT_OF_REACH) * 3.
         } else {
             target.map_or(0., |(p, range)| {
                 -(point.distance(p) - range * 0.8).abs() * 3.
