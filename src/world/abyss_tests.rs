@@ -77,3 +77,32 @@ fn abyss_boss_index_follows_malphas() {
     assert_eq!(w.abyss_boss_ids, BTreeSet::from([spawned]));
     assert_eq!(w.abyss_pending_count(), 0);
 }
+
+#[test]
+fn arriving_player_is_hidden_from_enemies_for_three_seconds() {
+    let (mut w, first) = super::movement_tests::fixture(0x18, false);
+    let character = w.players.remove(&first).unwrap().character;
+    let presentation = AccountPresentation {
+        guild: None,
+        credits: 0,
+        fame: 0,
+        best_fame: BTreeMap::new(),
+    };
+    let pos = Some(Pos { x: 8.5, y: 8.5 });
+    w.enter_at(character, None, pos, presentation, false)
+        .unwrap();
+    w.name = "Abyss of Demons".into();
+    w.encounter = true;
+    w.spawn_entity(0x66e, Pos { x: 13.5, y: 8.5 }, vec![])
+        .unwrap();
+    let shots = |w: &mut World, ticks| {
+        (0..ticks)
+            .map(|_| {
+                w.now += 50;
+                w.npc_step().len()
+            })
+            .sum::<usize>()
+    };
+    assert_eq!(shots(&mut w, 59), 0);
+    assert!(shots(&mut w, 60) > 0);
+}

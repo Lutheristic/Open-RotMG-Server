@@ -63,6 +63,7 @@ impl Directory {
         let p = world.players.get_mut(&id).unwrap();
         p.audit_fact(id,&world.name,world.now,"teleport",||serde_json::json!({"source":"player","target":target,"from":[p.pos.x,p.pos.y],"destination":[position.x,position.y],"epoch":p.audit_motion.epoch+1}));
         p.pos = position;
+        p.newbie_until = world.now + 3000;
         p.movement_credit = 0.78;
         // Server-driven motors budget against simulation time, not native packet arrival time.
         p.last_move_at = if p.controller == Controller::Human {
