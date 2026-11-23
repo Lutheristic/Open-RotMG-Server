@@ -384,6 +384,8 @@ pub struct Player {
     overlaps: VecDeque<(u64, Bullet)>,
     predicted_deaths: BTreeMap<i32, (u8, Option<u64>)>,
     ground_hits: BTreeMap<usize, i32>,
+    // Kithio hides a player from enemies for 3000 ms after entry or teleport.
+    newbie_until: u64,
     bot_damage: VecDeque<(u64, i32)>,
     volley_margin_ms: Arc<AtomicU64>,
     oxygen: i32,
@@ -3634,7 +3636,7 @@ impl World {
     pub fn enter(&mut self, ch: Character, tx: Option<Output>) -> Result<i32> {
         // Combat and inventory fixtures need nearby, repeatable starting positions.
         let (x, y) = self.map.spawns[self.players.len() % self.map.spawns.len()];
-        self.enter_at(
+        let id = self.enter_at(
             ch,
             tx,
             Some(Pos { x, y }),
@@ -3645,7 +3647,9 @@ impl World {
                 best_fame: BTreeMap::new(),
             },
             false,
-        )
+        )?;
+        self.players.get_mut(&id).unwrap().newbie_until = 0;
+        Ok(id)
     }
 
     pub fn enter_at(
@@ -3782,6 +3786,7 @@ impl World {
                 overlaps: VecDeque::new(),
                 predicted_deaths: BTreeMap::new(),
                 ground_hits: BTreeMap::new(),
+                newbie_until: self.now + 3000,
                 bot_damage: VecDeque::new(),
                 volley_margin_ms: Arc::default(),
                 oxygen: if self.name == "Ocean Trench" { 100 } else { -1 },
@@ -6930,7 +6935,8 @@ impl World {
                 let conditions = p.conditions(self.now);
                 (
                     p.pos,
-                    conditions & crate::condition::bit(crate::condition::INVISIBLE) != 0,
+                    conditions & crate::condition::bit(crate::condition::INVISIBLE) != 0
+                        || p.newbie_until > self.now,
                     conditions & crate::condition::bit(crate::condition::PARALYZED) != 0,
                 )
             })
@@ -7588,6 +7594,7 @@ impl World {
                             && !p.death_pending
                             && !p.departing
                             && !p.paused
+                            && p.newbie_until <= self.now
                             && p.conditions(self.now)
                                 & crate::condition::bit(crate::condition::INVISIBLE)
                                 == 0
